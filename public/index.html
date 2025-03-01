@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detección en Tiempo Real</title>
+    <style>
+        body { text-align: center; background: #000; color: white; font-family: Arial, sans-serif; }
+        video, canvas { border: 2px solid white; }
+        #resultado { margin-top: 10px; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Detección en Tiempo Real</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <p id="resultado">📷 Esperando detección...</p>
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const resultado = document.getElementById("resultado");
+
+        // Acceder a la cámara
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => { video.srcObject = stream; })
+            .catch((err) => { console.error("❌ Error al acceder a la cámara:", err); });
+
+        // Captura y envía una imagen cada 5 segundos
+        async function capturarImagen() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageBase64 = canvas.toDataURL("image/png").split(",")[1];
+
+            try {
+                const response = await fetch("/analizar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+
+                const data = await response.json();
+                resultado.innerText = `📌 Objeto Detectado: ${data.description}`;
+            } catch (error) {
+                resultado.innerText = "⚠️ Error al detectar el objeto.";
+                console.error("❌ Error al enviar imagen:", error);
+            }
+        }
+
+        setInterval(capturarImagen, 5000); // Captura cada 5 segundos
+    </script>
+</body>
+</html>
